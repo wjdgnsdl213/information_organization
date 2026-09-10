@@ -32,10 +32,10 @@
       <div class="quote-panel panel" id="quotePanel">
         <div class="empty-state" id="emptyState"><span class="empty-sheet" aria-hidden="true">▤</span><h2>견적서를 준비하고 있어요</h2><p>왼쪽에 요청 내용을 입력하면 검토할 초안이 이곳에 나타납니다.</p></div>
         <form id="quoteForm" class="quote-sheet" hidden>
-          <div class="quote-head"><div><p class="step">검토</p><h2>견적서</h2></div><label>견적번호<input id="quoteNumber" required></label></div>
+          <div class="quote-head"><div><p class="step">검토</p><h2>견 적 서</h2></div><label>견적서 번호<input id="quoteNumber" required></label></div>
           <div id="missingFields" class="message warning" role="status" hidden></div>
-          <div class="field-grid quote-fields"><label>받는 분<input id="clientName" required></label><label>담당자 · 연락처<input id="clientContact"></label><label>견적일<input id="quoteDate" type="date" required></label><label>유효기간<input id="validUntil" type="date"></label></div>
-          <div class="table-wrap"><table><thead><tr><th>품목</th><th>규격</th><th>수량</th><th>단위</th><th>단가</th><th>금액</th><th><span class="sr-only">행 제거</span></th></tr></thead><tbody id="itemRows"></tbody></table></div>
+          <div class="field-grid quote-fields"><label>고객 회사/성명<input id="clientName" required></label><label>고객 담당자 · 연락처<input id="clientContact"></label><label>견적일<input id="quoteDate" type="date" required></label><label>견적 유효기간<input id="validUntil" type="date"></label></div>
+          <p class="sheet-section">품목 내역</p><div class="table-wrap classic-table"><table><thead><tr><th>No.</th><th>품목명</th><th>규격</th><th>수량</th><th>단가</th><th>공급가액</th><th>부가세</th><th>합계</th></tr></thead><tbody id="itemRows"></tbody></table></div>
           <button id="addItem" class="text-button" type="button">+ 품목 추가</button>
           <div class="quote-bottom"><label class="notes">비고<textarea id="notes" rows="3"></textarea></label><div class="totals"><label>부가세율 <input id="taxRate" type="number" min="0" max="100" step="0.1">%</label><p><span>공급가액</span><strong id="supplyTotal">0원</strong></p><p><span>부가세</span><strong id="taxTotal">0원</strong></p><p class="grand-total"><span>합계</span><strong id="grandTotal">0원</strong></p></div></div>
           <p id="exportError" class="message error" role="alert"></p><button class="download-button" type="submit">확인 후 HWPX 다운로드</button>
@@ -43,7 +43,7 @@
       </div>
     </section>
   </main>
-  <template id="itemTemplate"><tr><td><input data-field="name" aria-label="품목명" required></td><td><input data-field="spec" aria-label="규격"></td><td><input data-field="quantity" aria-label="수량" type="number" min="0.01" step="any" required></td><td><input data-field="unit" aria-label="단위" required></td><td><input data-field="unitPrice" aria-label="단가" type="number" min="0" step="1" required></td><td class="line-total">0원</td><td><button class="remove-item" type="button" aria-label="품목 행 제거">×</button></td></tr></template>
+  <template id="itemTemplate"><tr><td><button class="remove-item" type="button" aria-label="품목 행 제거">×</button></td><td><input data-field="name" aria-label="품목명" required></td><td><input data-field="spec" aria-label="규격"></td><td><input data-field="quantity" aria-label="수량" type="number" min="0.01" step="any" required><input data-field="unit" type="hidden" value="개"></td><td><input data-field="unitPrice" aria-label="단가" type="number" min="0" step="1" required></td><td class="line-supply">0원</td><td class="line-tax">0원</td><td class="line-total">0원</td></tr></template>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

@@ -19,14 +19,18 @@ function addItem(item = {}) {
 
 function calculate() {
   let supply = 0;
+  const rate = Number($("#taxRate").value || 0);
   for (const row of elements.rows.rows) {
     const quantity = Number(row.querySelector('[data-field="quantity"]').value || 0);
     const unitPrice = Number(row.querySelector('[data-field="unitPrice"]').value || 0);
     const total = Math.round(quantity * unitPrice);
-    row.querySelector(".line-total").textContent = won(total);
+    const tax = Math.round(total * rate / 100);
+    row.querySelector(".line-supply").textContent = won(total);
+    row.querySelector(".line-tax").textContent = won(tax);
+    row.querySelector(".line-total").textContent = won(total + tax);
     supply += total;
   }
-  const tax = Math.round(supply * Number($("#taxRate").value || 0) / 100);
+  const tax = Math.round(supply * rate / 100);
   $("#supplyTotal").textContent = won(supply);
   $("#taxTotal").textContent = won(tax);
   $("#grandTotal").textContent = won(supply + tax);

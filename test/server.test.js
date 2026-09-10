@@ -30,6 +30,8 @@ test("소개 페이지와 견적 작성 페이지를 분리한다", async () => 
   assert.match(homeHtml, /pretendard/i);
   assert.match(createHtml, /견적서 만들기/);
   assert.doesNotMatch(createHtml, /견적을 말하면/);
+  assert.match(createHtml, /품목 내역/);
+  assert.match(createHtml, /공급가액/);
 });
 
 test("확정 견적서는 HWPX로 내려준다", async () => {
