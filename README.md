@@ -4,13 +4,14 @@
 
 ## 실행
 
-Node.js 22 이상이 필요합니다. 외부 패키지는 없습니다.
+Node.js 22 이상이 필요합니다.
 
 1. `.env.example`을 `.env`로 복사합니다.
 2. `OPENROUTER_API_KEY`에 OpenRouter 키를 넣습니다.
 3. 아래 명령을 실행하고 `http://localhost:3000`을 엽니다.
 
 ```powershell
+npm ci
 npm start
 ```
 
@@ -32,7 +33,9 @@ OpenRouter 오류가 보이면 다음을 확인합니다.
 
 실시간 음성은 브라우저가 제공하는 음성 인식 서비스를 사용합니다. Safari·Firefox까지 같은 품질로 지원하거나 음성 파일을 직접 관리하려면 별도 스트리밍 STT 제공자와 서버 WebSocket 경로가 필요합니다.
 
-HWPX 견적서는 한글에서 열어 편집할 수 있도록 서버에서 생성합니다.
+HWPX는 한글에서 변환한 Classic_Quotation 양식의 ZIP/XML 구조를 보존하고 값만 채웁니다.
+서버에는 한글 설치가 필요하지 않습니다. 서식 글꼴은 Pretendard이며, 설치되지 않은 PC에서는 대체 글꼴로 표시될 수 있습니다.
+실제 한글 열기/저장 검증 방법은 [템플릿 설명](templates/README.md)에 있습니다.
 
 ## 환경변수
 

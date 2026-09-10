@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHwpx } from "../src/hwpx.js";
+import { DOMParser } from "@xmldom/xmldom";
 
 function entries(data) {
   const files = new Map();
@@ -30,7 +31,7 @@ test("HWPX has the quote template sections and table layout", () => {
   assert.match(section, /견적서 번호/);
   assert.match(section, /공급자 정보/);
   assert.match(section, /고객 정보/);
-  assert.match(section, /품목 내역/);
+  assert.match(section, /견적 내역/);
   assert.match(section, /공급가액 합계/);
   assert.match(section, /<hp:tbl/);
 });
@@ -49,4 +50,34 @@ test("every HWPX entry has a valid ZIP checksum", () => {
 test("HWPX escapes quote text", () => {
   const section = entries(createHwpx({ ...quote, clientName: "A&B <C>" })).get("Contents/section0.xml");
   assert.match(section, /A&amp;B &lt;C&gt;/);
+});
+
+test("template rows expand with valid addresses and preserve Hancom font definitions", () => {
+  const files = entries(createHwpx({ ...quote, items: Array.from({ length: 12 }, (_, i) => ({
+    name: "품목 " + i, spec: "", quantity: 1, unit: "개", unitPrice: 5
+  })) }));
+  const parser = new DOMParser();
+  const ns = "http://www.hancom.co.kr/hwpml/2011/paragraph";
+  const section = parser.parseFromString(files.get("Contents/section0.xml"), "application/xml");
+  const table = section.getElementsByTagNameNS(ns, "tbl")[6];
+  assert.equal(table.getAttribute("rowCnt"), "13");
+  const rows = Array.from(table.getElementsByTagNameNS(ns, "tr"));
+  let tax = 0;
+  rows.slice(1).forEach((row, i) => {
+    const cells = Array.from(row.getElementsByTagNameNS(ns, "tc"));
+    assert.equal(cells.length, 8);
+    cells.forEach((cell, col) => {
+      const address = cell.getElementsByTagNameNS(ns, "cellAddr")[0];
+      assert.equal(address.getAttribute("rowAddr"), String(i + 1));
+      assert.equal(address.getAttribute("colAddr"), String(col));
+      assert.ok(cell.getAttribute("borderFillIDRef"));
+    });
+    tax += Number(cells[6].getElementsByTagNameNS(ns, "t")[0].textContent);
+  });
+  assert.equal(tax, 6);
+  const header = parser.parseFromString(files.get("Contents/header.xml"), "application/xml");
+  assert.equal(header.getElementsByTagNameNS("http://www.hancom.co.kr/hwpml/2011/head", "fontface").length, 7);
+  assert.match(files.get("Contents/header.xml"), /face="Pretendard"/);
+  assert.match(files.get("Contents/content.hpf"), /href="Contents\/section0.xml"/);
+  assert.throws(() => createHwpx({ ...quote, notes: "\u0001" }), /invalid XML/);
 });

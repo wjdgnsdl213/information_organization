@@ -1,38 +1,103 @@
+import { readFileSync } from "node:fs";
+import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
+import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 import { quoteTotals } from "./quote.js";
 
-const esc = value => {
+// Hancom-converted Classic_Quotation.docx. Keep package metadata and style references intact.
+const template = readFileSync(new URL("../templates/classic.hwpx", import.meta.url));
+const HP = "http://www.hancom.co.kr/hwpml/2011/paragraph";
+const HH = "http://www.hancom.co.kr/hwpml/2011/head";
+const nodes = (node, name) => Array.from(node.getElementsByTagNameNS(HP, name));
+const children = (node, name) => Array.from(node.childNodes).filter(n => n.localName === name);
+const parse = data => new DOMParser().parseFromString(strFromU8(data), "application/xml");
+
+function fill(cell, value) {
   const text = String(value ?? "");
-  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text)) throw new Error("HWPX XML cannot contain invalid XML 1.0 characters.");
-  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
-};
-const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let i = 0; i < 8; i++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
-const crc32 = data => { let crc = 0xffffffff; for (const byte of data) crc = crcTable[(crc ^ byte) & 255] ^ (crc >>> 8); return (crc ^ 0xffffffff) >>> 0; };
-function zip(entries) {
-  const local = [], central = []; let offset = 0;
-  for (const [name, value] of entries) {
-    const n = Buffer.from(name), d = Buffer.from(value), crc = crc32(d), flags = name === "mimetype" ? 0 : 0x800, h = Buffer.alloc(30), c = Buffer.alloc(46);
-    h.writeUInt32LE(0x04034b50, 0); h.writeUInt16LE(20, 4); h.writeUInt16LE(flags, 6); h.writeUInt32LE(crc, 14); h.writeUInt32LE(d.length, 18); h.writeUInt32LE(d.length, 22); h.writeUInt16LE(n.length, 26); local.push(h, n, d);
-    c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(20, 4); c.writeUInt16LE(20, 6); c.writeUInt16LE(flags, 8); c.writeUInt32LE(crc, 16); c.writeUInt32LE(d.length, 20); c.writeUInt32LE(d.length, 24); c.writeUInt16LE(n.length, 28); c.writeUInt32LE(offset, 42); central.push(c, n); offset += h.length + n.length + d.length;
+  if (/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u.test(text)) {
+    throw new Error("HWPX XML cannot contain invalid XML 1.0 characters.");
   }
-  const size = central.reduce((sum, value) => sum + value.length, 0), end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10); end.writeUInt32LE(size, 12); end.writeUInt32LE(offset, 16);
-  return Buffer.concat([...local, ...central, end]);
-}
-let id = 2;
-function p(value) { return `<hp:p id="${id++}" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="0"><hp:t>${esc(value)}</hp:t></hp:run></hp:p>`; }
-function tbl(rows, widths) {
-  const total = widths.reduce((sum, width) => sum + width, 0);
-  const rowsXml = rows.map((row, y) => `<hp:tr>${row.map((value, x) => `<hp:tc><hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0">${p(value)}</hp:subList><hp:cellAddr colAddr="${x}" rowAddr="${y}"/><hp:cellSpan colSpan="1" rowSpan="1"/><hp:cellSz width="${widths[x]}" height="900"/><hp:cellMargin left="80" right="80" top="40" bottom="40"/><hp:cellProtect locked="0" hidden="0"/></hp:tc>`).join("")}</hp:tr>`).join("");
-  return `<hp:p id="${id++}" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="0"><hp:tbl id="" zOrder="0" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="CELL" repeatHeader="1" rowCnt="${rows.length}" colCnt="${widths.length}" cellSpacing="0" borderFillIDRef="1"><hp:sz width="${total}" widthRelTo="ABSOLUTE" height="${rows.length * 950}" heightRelTo="ABSOLUTE" protect="0"/><hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" vertRelTo="PARA" horzRelTo="COLUMN" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0"/><hp:outMargin left="0" right="0" top="80" bottom="80"/><hp:inMargin left="0" right="0" top="0" bottom="0"/>${rowsXml}</hp:tbl></hp:run></hp:p>`;
+  const list = nodes(cell, "subList")[0];
+  const paragraph = nodes(list, "p")[0].cloneNode(true);
+  const run = nodes(paragraph, "run")[0].cloneNode(false);
+  // Template's empty cells use a 10pt run; retain their paragraph alignment.
+  while (paragraph.firstChild) paragraph.removeChild(paragraph.firstChild);
+  const t = cell.ownerDocument.createElementNS(HP, "hp:t");
+  text.split(/\r?\n/).forEach((line, i) => {
+    if (i) t.appendChild(cell.ownerDocument.createElementNS(HP, "hp:lineBreak"));
+    t.appendChild(cell.ownerDocument.createTextNode(line));
+  });
+  run.appendChild(t);
+  paragraph.appendChild(run);
+  while (list.firstChild) list.removeChild(list.firstChild);
+  list.appendChild(paragraph);
 }
 
 export function createHwpx(quote) {
-  id = 2;
-  const sum = quoteTotals(quote), won = value => `${Math.round(value).toLocaleString("ko-KR")}원`;
-  const items = quote.items.map((item, i) => [String(i + 1), item.name, item.spec || "", `${item.quantity} ${item.unit}`, won(item.unitPrice), won(item.quantity * item.unitPrice), won(item.quantity * item.unitPrice * quote.taxRate / 100), won(item.quantity * item.unitPrice * (1 + quote.taxRate / 100))]);
-  while (items.length < 7) items.push([String(items.length + 1), "", "", "", "", "", "", ""]);
-  const section = `<?xml version="1.0" encoding="UTF-8"?><hs:sec xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph"><hp:p id="1" paraPrIDRef="0" styleIDRef="0"><hp:run charPrIDRef="0"><hp:secPr id="" textDirection="HORIZONTAL" spaceColumns="1134" tabStop="8000" tabStopVal="4000" tabStopUnit="HWPUNIT" outlineShapeIDRef="0" memoShapeIDRef="0" textVerticalWidthHead="0" masterPageCnt="0"><hp:grid lineGrid="0" charGrid="0" wonggojiFormat="0"/><hp:startNum pageStartsOn="BOTH" page="1" pic="1" tbl="1" equation="1"/><hp:visibility hideFirstHeader="0" hideFirstFooter="0" hideFirstMasterPage="0" border="SHOW_ALL" fill="SHOW_ALL" hideFirstPageNum="0" hideFirstEmptyLine="0" showLineNumber="0"/><hp:pagePr landscape="WIDELY" width="59528" height="84186" gutterType="LEFT_ONLY"><hp:margin header="4252" footer="4252" gutter="0" left="5668" right="5668" top="4252" bottom="4252"/></hp:pagePr></hp:secPr></hp:run></hp:p>${p("견 적 서")}${tbl([["견적서 번호", quote.quoteNumber, "견적일", quote.quoteDate], ["견적 유효기간", quote.validUntil || "-", "견적 금액", won(sum.total)]], [8500, 15000, 8500, 17000])}${tbl([["공급자 정보"]], [49000])}${tbl([["상호명", quote.supplier.companyName || "-", "사업자등록번호", quote.supplier.registrationNumber || "-"], ["대표자명", quote.supplier.representative || "-", "연락처", "-"], ["주소", quote.supplier.address || "-", "이메일", "-"]], [8500, 15000, 10500, 15000])}${tbl([["고객 정보"]], [49000])}${tbl([["회사/성명", quote.clientName, "담당자", quote.clientContact || "-"], ["주소", "-", "연락처", quote.clientContact || "-"]], [8500, 15000, 10500, 15000])}${tbl([["품목 내역"]], [49000])}${tbl([["No.", "품목명", "규격", "수량", "단가", "공급가액", "부가세", "합계"], ...items], [3000, 9000, 7000, 5000, 6500, 7000, 5500, 6000])}${tbl([["공급가액 합계", won(sum.supply), "부가세 합계", won(sum.tax)], ["총 견적금액", won(sum.total), "견적 유효기간", quote.validUntil || "-"], ["결제 조건", quote.notes || "-", "품목/서비스 제공일", quote.quoteDate]], [9500, 15000, 10500, 14000])}${tbl([["비고"], [quote.notes || "-"]], [49000])}</hs:sec>`;
-  const header = `<?xml version="1.0" encoding="UTF-8"?><hh:head xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head" version="1.4" secCnt="1"><hh:beginNum page="1" footnote="1" endnote="1" pic="1" tbl="1" equation="1"/><hh:refList><hh:fontfaces itemCnt="1"><hh:fontface lang="HANGUL" fontCnt="1"><hh:font id="0" face="Pretendard" type="TTF" isEmbedded="0"/></hh:fontface></hh:fontfaces><hh:charProperties itemCnt="1"><hh:charPr id="0" height="900" textColor="#171A20" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="0"><hh:fontRef hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/></hh:charPr></hh:charProperties><hh:paraProperties itemCnt="1"><hh:paraPr id="0" tabPrIDRef="0" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0"><hh:align horizontal="LEFT" vertical="BASELINE"/></hh:paraPr></hh:paraProperties><hh:borderFills itemCnt="2"><hh:borderFill id="0" threeD="0" shadow="0" centerLine="NONE" breakCellSeparateLine="0"><hh:leftBorder type="NONE" width="0.1 mm" color="#000000"/><hh:rightBorder type="NONE" width="0.1 mm" color="#000000"/><hh:topBorder type="NONE" width="0.1 mm" color="#000000"/><hh:bottomBorder type="NONE" width="0.1 mm" color="#000000"/><hh:diagonal type="NONE" width="0.1 mm" color="#000000"/><hh:fillBrush><hc:winBrush xmlns:hc="http://www.hancom.co.kr/hwpml/2011/core" faceColor="none" hatchColor="none" alpha="0"/></hh:fillBrush></hh:borderFill><hh:borderFill id="1" threeD="0" shadow="0" centerLine="NONE" breakCellSeparateLine="0"><hh:leftBorder type="SOLID" width="0.12 mm" color="#7F7F7F"/><hh:rightBorder type="SOLID" width="0.12 mm" color="#7F7F7F"/><hh:topBorder type="SOLID" width="0.12 mm" color="#7F7F7F"/><hh:bottomBorder type="SOLID" width="0.12 mm" color="#7F7F7F"/><hh:diagonal type="NONE" width="0.1 mm" color="#000000"/><hh:fillBrush><hc:winBrush xmlns:hc="http://www.hancom.co.kr/hwpml/2011/core" faceColor="#FFFFFF" hatchColor="none" alpha="0"/></hh:fillBrush></hh:borderFill></hh:borderFills><hh:styles itemCnt="1"><hh:style id="0" type="PARA" name="기본 글꼴" engName="Normal" paraPrIDRef="0" charPrIDRef="0" nextStyleIDRef="0" langID="1042" lockForm="0"/></hh:styles></hh:refList></hh:head>`;
-  const files = [["mimetype", "application/hwp+zip"], ["version.xml", `<?xml version="1.0" encoding="UTF-8"?><hv:HCFVersion xmlns:hv="http://www.hancom.co.kr/hwpml/2011/version" targetApplication="WORDPROCESSOR" major="5" minor="1" micro="0" buildNumber="0" os="1" xmlVersion="1.4" application="Quote Maker" appVersion="0.1"/>`], ["META-INF/manifest.xml", `<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/hwp+zip"/><manifest:file-entry manifest:full-path="Contents/content.hpf" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="Contents/header.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="Contents/section0.xml" manifest:media-type="text/xml"/></manifest:manifest>`], ["META-INF/container.xml", `<?xml version="1.0" encoding="UTF-8"?><container xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="Contents/content.hpf" media-type="application/hwpml-package+xml"/></rootfiles></container>`], ["Contents/content.hpf", `<?xml version="1.0" encoding="UTF-8"?><opf:package xmlns:opf="http://www.idpf.org/2007/opf/" version="3.0"><opf:manifest><opf:item id="header" href="header.xml" media-type="application/xml"/><opf:item id="section0" href="section0.xml" media-type="application/xml"/></opf:manifest><opf:spine><opf:itemref idref="section0" linear="yes"/></opf:spine></opf:package>`], ["Contents/header.xml", header], ["settings.xml", `<?xml version="1.0" encoding="UTF-8"?><ha:HWPApplicationSetting xmlns:ha="http://www.hancom.co.kr/hwpml/2011/app"><ha:CaretPosition listIDRef="0" paraIDRef="1" pos="0"/></ha:HWPApplicationSetting>`], ["Contents/section0.xml", section]];
-  return zip(files);
+  const files = unzipSync(template);
+  const section = parse(files["Contents/section0.xml"]);
+  const tables = nodes(section, "tbl");
+  const set = (table, row, col, value) => fill(children(children(tables[table], "tr")[row], "tc")[col], value);
+  const money = value => Math.round(value).toLocaleString("ko-KR");
+  const totals = quoteTotals(quote);
+  set(0, 0, 1, quote.quoteNumber);
+  set(0, 0, 3, quote.quoteDate);
+  set(0, 1, 1, quote.supplier.companyName);
+  set(0, 1, 3, quote.clientName);
+  set(2, 0, 1, quote.supplier.companyName);
+  set(2, 0, 3, quote.supplier.registrationNumber);
+  set(2, 1, 1, quote.supplier.representative);
+  set(2, 2, 1, quote.supplier.address);
+  set(4, 0, 1, quote.clientName);
+  set(4, 0, 3, quote.clientContact);
+  // No payment/delivery facts are inferred from quote date or general notes.
+  set(7, 0, 1, money(totals.supply));
+  set(7, 0, 3, money(totals.tax));
+  set(7, 1, 1, money(totals.total) + " 원");
+  set(7, 1, 3, quote.validUntil);
+  set(8, 0, 1, quote.notes);
+  const itemTable = tables[6];
+  const originalRows = children(itemTable, "tr");
+  while (children(itemTable, "tr").length <= quote.items.length) {
+    itemTable.appendChild(originalRows[1].cloneNode(true));
+  }
+  const rows = children(itemTable, "tr");
+  itemTable.setAttribute("rowCnt", String(rows.length));
+  nodes(itemTable, "sz")[0].setAttribute("height", String(1415 + (rows.length - 1) * 1555));
+  let supplySoFar = 0;
+  let taxSoFar = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const item = quote.items[i - 1];
+    let values = [String(i), "", "", "", "", "", "", ""];
+    if (item) {
+      const supply = Math.round(item.quantity * item.unitPrice);
+      supplySoFar += supply;
+      const cumulativeTax = Math.round(supplySoFar * quote.taxRate / 100);
+      const tax = cumulativeTax - taxSoFar;
+      taxSoFar = cumulativeTax;
+      values = [String(i), item.name, item.spec, item.quantity + " " + item.unit,
+        money(item.unitPrice), money(supply), money(tax), money(supply + tax)];
+    }
+    children(rows[i], "tc").forEach((cell, col) => {
+      fill(cell, values[col]);
+      nodes(cell, "cellAddr")[0].setAttribute("rowAddr", String(i));
+    });
+  }
+  // Allocate usable space to descriptions, with all rows sharing the same grid.
+  const widths = [2600, 11700, 7000, 4700, 6400, 6900, 5600, 7540];
+  rows.forEach(row => children(row, "tc").forEach((cell, col) => {
+    nodes(cell, "cellSz")[0].setAttribute("width", String(widths[col]));
+    const margin = nodes(cell, "cellMargin")[0];
+    margin.setAttribute("left", "180");
+    margin.setAttribute("right", "180");
+  }));
+  nodes(itemTable, "sz")[0].setAttribute("width", String(widths.reduce((a, b) => a + b, 0)));
+  const header = parse(files["Contents/header.xml"]);
+  for (const font of Array.from(header.getElementsByTagNameNS(HH, "font"))) font.setAttribute("face", "Pretendard");
+  const serializer = new XMLSerializer();
+  files["Contents/header.xml"] = strToU8(serializer.serializeToString(header));
+  files["Contents/section0.xml"] = strToU8(serializer.serializeToString(section));
+  files["Preview/PrvText.txt"] = strToU8("견적서\n" + quote.clientName + "\n" + quote.items.map(i => i.name).join("\n"));
+  // A static thumbnail would show the unfilled template in file previews.
+  delete files["Preview/PrvImage.png"];
+  return Buffer.from(zipSync(files, { level: 0 }));
 }

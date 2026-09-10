@@ -10,27 +10,35 @@ let stopListening = () => {};
 
 function addItem(item = {}) {
   const row = elements.template.content.firstElementChild.cloneNode(true);
-  for (const input of row.querySelectorAll("input")) input.value = item[input.dataset.field] || (input.dataset.field === "unit" ? "개" : "");
-  row.querySelector(".remove-item").addEventListener("click", () => { row.remove(); calculate(); });
+  for (const input of row.querySelectorAll("input")) input.value = item[input.dataset.field] ?? (input.dataset.field === "unit" ? "개" : "");
+  if (!row.querySelector('[data-field="unit"]').value) row.querySelector('[data-field="unit"]').value = "개";
+  row.querySelector(".item-number").textContent = elements.rows.rows.length + 1;
+  row.querySelector(".remove-item").addEventListener("click", () => { row.remove(); numberItems(); calculate(); });
   row.addEventListener("input", calculate);
   elements.rows.append(row);
   calculate();
 }
 
+function numberItems() {
+  [...elements.rows.rows].forEach((row, index) => row.querySelector(".item-number").textContent = index + 1);
+}
+
 function calculate() {
   let supply = 0;
+  let tax = 0;
   const rate = Number($("#taxRate").value || 0);
   for (const row of elements.rows.rows) {
     const quantity = Number(row.querySelector('[data-field="quantity"]').value || 0);
     const unitPrice = Number(row.querySelector('[data-field="unitPrice"]').value || 0);
     const total = Math.round(quantity * unitPrice);
-    const tax = Math.round(total * rate / 100);
-    row.querySelector(".line-supply").textContent = won(total);
-    row.querySelector(".line-tax").textContent = won(tax);
-    row.querySelector(".line-total").textContent = won(total + tax);
     supply += total;
+    const nextTax = Math.round(supply * rate / 100);
+    const lineTax = nextTax - tax;
+    row.querySelector(".line-supply").textContent = won(total);
+    row.querySelector(".line-tax").textContent = won(lineTax);
+    row.querySelector(".line-total").textContent = won(total + lineTax);
+    tax = nextTax;
   }
-  const tax = Math.round(supply * rate / 100);
   $("#supplyTotal").textContent = won(supply);
   $("#taxTotal").textContent = won(tax);
   $("#grandTotal").textContent = won(supply + tax);
