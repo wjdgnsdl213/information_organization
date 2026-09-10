@@ -24,10 +24,11 @@ test("HWPX has the quote template sections and table layout", () => {
   assert.equal(data.subarray(30, 38).toString("utf8"), "mimetype");
   assert.equal(files.get("mimetype"), "application/hwp+zip");
   const section = files.get("Contents/section0.xml");
-  assert.match(section, /Preliminary Pricing/);
-  assert.match(section, /Quote No\./);
-  assert.match(section, /Company Name/);
-  assert.match(section, /Development/);
+  assert.match(section, /견적서 번호/);
+  assert.match(section, /공급자 정보/);
+  assert.match(section, /고객 정보/);
+  assert.match(section, /품목 내역/);
+  assert.match(section, /공급가액 합계/);
   assert.match(section, /<hp:tbl/);
 });
 
