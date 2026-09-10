@@ -11,6 +11,7 @@ const publicRoot = join(process.cwd(), "public");
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml" };
 
 async function jsonBody(request) {
+  if (request.body && typeof request.body === "object") return request.body;
   let size = 0;
   const chunks = [];
   for await (const chunk of request) {
@@ -37,7 +38,7 @@ function sendJson(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-export const server = http.createServer(async (request, response) => {
+export async function handler(request, response) {
   try {
     const pathname = new URL(request.url || "/", "http://localhost").pathname;
     if (request.method === "POST" && pathname === "/api/quotes/parse") {
@@ -79,7 +80,10 @@ export const server = http.createServer(async (request, response) => {
     if (status >= 500) console.error(error);
     sendJson(response, status, { error: error.message || "요청을 처리하지 못했습니다." });
   }
-});
+}
+
+export const server = http.createServer(handler);
+export default handler;
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   server.listen(port, () => console.log(`견적서 작성기: http://localhost:${port}`));
