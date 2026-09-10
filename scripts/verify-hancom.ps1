@@ -4,12 +4,12 @@ $hwp.XHwpWindows.Item(0).Visible = $false
 $null = $hwp.RegisterModule('FilePathCheckDLL', 'raonkhwp')
 $null = $hwp.SetMessageBoxMode(0x20000)
 try {
-    foreach ($count in @(2, 12)) {
-        $path = Join-Path (Get-Location) "tmp/verification/quote-$count.hwpx"
+    foreach ($name in @('quote-2', 'quote-12', 'production')) {
+        $path = Join-Path (Get-Location) "tmp/verification/$name.hwpx"
         if (-not $hwp.Open($path, 'HWPX', 'forceopen:true')) { throw "Hancom rejected $path" }
-        Write-Output "OPEN quote-$count.hwpx=True"
+        Write-Output "OPEN $name.hwpx=True"
         Write-Output "PAGES=$($hwp.PageCount)"
-        $saved = Join-Path (Get-Location) "tmp/verification/verified-$count.hwpx"
+        $saved = Join-Path (Get-Location) "tmp/verification/verified-$name.hwpx"
         if (-not $hwp.SaveAs($saved, 'HWPX', '')) { throw 'HWPX save failed' }
         if (-not (Test-Path -LiteralPath $saved)) { throw 'Saved file missing' }
         $hwp.Clear(1)

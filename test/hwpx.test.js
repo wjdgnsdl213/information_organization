@@ -29,8 +29,8 @@ test("HWPX has the quote template sections and table layout", () => {
   assert.equal(files.get("mimetype"), "application/hwp+zip");
   const section = files.get("Contents/section0.xml");
   assert.match(section, /견적서 번호/);
-  assert.match(section, /공급자 정보/);
-  assert.match(section, /고객 정보/);
+  assert.match(section, /공급자/);
+  assert.match(section, /고객/);
   assert.match(section, /견적 내역/);
   assert.match(section, /공급가액 합계/);
   assert.match(section, /<hp:tbl/);
@@ -59,7 +59,7 @@ test("template rows expand with valid addresses and preserve Hancom font definit
   const parser = new DOMParser();
   const ns = "http://www.hancom.co.kr/hwpml/2011/paragraph";
   const section = parser.parseFromString(files.get("Contents/section0.xml"), "application/xml");
-  const table = section.getElementsByTagNameNS(ns, "tbl")[6];
+  const table = Array.from(section.getElementsByTagNameNS(ns, "tbl")).find(node => node.getAttribute("colCnt") === "8");
   assert.equal(table.getAttribute("rowCnt"), "13");
   const rows = Array.from(table.getElementsByTagNameNS(ns, "tr"));
   let tax = 0;

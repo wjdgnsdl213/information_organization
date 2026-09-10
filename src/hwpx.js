@@ -41,14 +41,26 @@ export function createHwpx(quote) {
   const totals = quoteTotals(quote);
   set(0, 0, 1, quote.quoteNumber);
   set(0, 0, 3, quote.quoteDate);
-  set(0, 1, 1, quote.supplier.companyName);
-  set(0, 1, 3, quote.clientName);
-  set(2, 0, 1, quote.supplier.companyName);
-  set(2, 0, 3, quote.supplier.registrationNumber);
-  set(2, 1, 1, quote.supplier.representative);
-  set(2, 2, 1, quote.supplier.address);
-  set(4, 0, 1, quote.clientName);
-  set(4, 0, 3, quote.clientContact);
+  const partyTable = tables[0];
+  const partyRows = children(partyTable, "tr");
+  while (children(partyTable, "tr").length < 5) partyTable.appendChild(partyRows[1].cloneNode(true));
+  partyTable.setAttribute("rowCnt", "5");
+  const partyValues = [
+    ["공급자", quote.supplier.companyName, "고객", quote.clientName],
+    ["대표자", quote.supplier.representative, "담당자 · 연락처", quote.clientContact],
+    ["사업자등록번호", quote.supplier.registrationNumber, "견적 유효기간", quote.validUntil],
+    ["주소", quote.supplier.address, "", ""]
+  ];
+  children(partyTable, "tr").slice(1).forEach((row, rowIndex) => children(row, "tc").forEach((cell, col) => {
+    fill(cell, partyValues[rowIndex][col]);
+    nodes(cell, "cellAddr")[0].setAttribute("rowAddr", String(rowIndex + 1));
+  }));
+  nodes(partyTable, "sz")[0].setAttribute("height", "7200");
+  // The compact two-column party table replaces the four separate supplier/customer blocks.
+  for (const table of tables.slice(1, 5)) {
+    const paragraph = table.parentNode?.parentNode;
+    if (paragraph?.parentNode) paragraph.parentNode.removeChild(paragraph);
+  }
   // No payment/delivery facts are inferred from quote date or general notes.
   set(7, 0, 1, money(totals.supply));
   set(7, 0, 3, money(totals.tax));

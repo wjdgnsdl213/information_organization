@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { extractQuote } from "./src/openrouter.js";
 import { normalizeQuote, quoteTotals } from "./src/quote.js";
 import { createHwpx } from "./src/hwpx.js";
+import { createPdf } from "./src/pdf.js";
 
 const port = Number(process.env.PORT || 3000);
 const publicRoot = join(process.cwd(), "public");
@@ -51,7 +52,17 @@ export async function handler(request, response) {
       const file = createHwpx(quote);
       response.writeHead(200, {
         "Content-Type": "application/hwp+zip",
-        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${quote.quoteNumber}-견적서.hwpx`)}`,
+        "Content-Disposition": `attachment; filename="quotation.hwpx"; filename*=UTF-8''${encodeURIComponent(`${quote.quoteNumber}-견적서.hwpx`)}`,
+        "Content-Length": file.length
+      });
+      return response.end(file);
+    }
+    if (request.method === "POST" && pathname === "/api/quotes/export-pdf") {
+      const quote = normalizeQuote(await jsonBody(request));
+      const file = await createPdf(quote);
+      response.writeHead(200, {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="quotation.pdf"; filename*=UTF-8''${encodeURIComponent(`${quote.quoteNumber}-견적서.pdf`)}`,
         "Content-Length": file.length
       });
       return response.end(file);

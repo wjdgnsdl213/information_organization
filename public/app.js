@@ -4,7 +4,7 @@ const won = value => `${Math.round(Number(value) || 0).toLocaleString("ko-KR")}�
 const elements = {
   request: $("#requestInput"), mic: $("#micButton"), micLabel: $("#micLabel"), live: $("#liveRow"),
   parse: $("#parseButton"), inputError: $("#inputError"), form: $("#quoteForm"), empty: $("#emptyState"),
-  rows: $("#itemRows"), template: $("#itemTemplate"), missing: $("#missingFields"), exportError: $("#exportError")
+  rows: $("#itemRows"), template: $("#itemTemplate"), exportError: $("#exportError")
 };
 let stopListening = () => {};
 
@@ -67,11 +67,8 @@ function showDraft(draft) {
   elements.rows.replaceChildren();
   for (const item of draft.items || []) addItem(item);
   if (!elements.rows.children.length) addItem();
-  const missing = draft.missingFields || [];
-  elements.missing.hidden = !missing.length;
-  elements.missing.textContent = missing.length ? `확인이 필요합니다: ${missing.join(", ")}` : "";
-  elements.empty.hidden = true;
-  elements.empty.classList.add("is-hidden");
+  elements.empty?.remove();
+  elements.empty = null;
   elements.form.hidden = false;
   elements.form.classList.add("is-visible");
   calculate();
@@ -113,12 +110,32 @@ elements.form.addEventListener("submit", async event => {
     const url = URL.createObjectURL(await response.blob());
     const link = Object.assign(document.createElement("a"), { href: url, download: `${$("#quoteNumber").value}-견적서.hwpx` });
     link.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   } catch (error) {
     elements.exportError.textContent = error.message || "파일을 만들지 못했습니다.";
   } finally {
     button.disabled = false;
     button.textContent = "확인 후 HWPX 다운로드";
+  }
+});
+
+$("#pdfButton").addEventListener("click", async event => {
+  elements.exportError.textContent = "";
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = "PDF 만드는 중";
+  try {
+    const response = await fetch("/api/quotes/export-pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(quoteData()) });
+    if (!response.ok) throw new Error((await response.json()).error);
+    const url = URL.createObjectURL(await response.blob());
+    const link = Object.assign(document.createElement("a"), { href: url, download: `${$("#quoteNumber").value}-견적서.pdf` });
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  } catch (error) {
+    elements.exportError.textContent = error.message || "PDF 파일을 만들지 못했습니다.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "PDF 다운로드";
   }
 });
 
