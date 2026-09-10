@@ -1,16 +1,10 @@
 # 견적서 작성기 MVP
 
-문자 또는 한국어 실시간 음성 입력을 OpenRouter로 구조화하고, 사용자가 검토한 견적을 PNG 이미지로 내려받는 웹 서비스입니다.
+문자 또는 한국어 실시간 음성 입력을 OpenRouter로 구조화하고, 사용자가 검토한 견적을 HWPX 문서로 내려받는 웹 서비스입니다.
 
 ## 실행
 
 Node.js 22 이상이 필요합니다. 외부 패키지는 없습니다.
-
-PNG 생성에는 Python 3와 Pillow가 필요합니다.
-
-```powershell
-python -m pip install -r requirements.txt
-```
 
 1. `.env.example`을 `.env`로 복사합니다.
 2. `OPENROUTER_API_KEY`에 OpenRouter 키를 넣습니다.
@@ -33,12 +27,12 @@ OpenRouter 오류가 보이면 다음을 확인합니다.
 - 문자 입력 및 Chrome/Edge의 Web Speech API를 통한 한국어 실시간 자막
 - OpenRouter 구조화 출력으로 거래처·품목·수량·단가 추출
 - 누락 항목 표시, 품목 추가·삭제·수정, 공급가액·부가세·합계 계산
-- 서버 재검증 후 PNG 다운로드
+- 서버 재검증 후 HWPX 다운로드
 - 공급자 정보는 현재 브라우저에만 저장
 
 실시간 음성은 브라우저가 제공하는 음성 인식 서비스를 사용합니다. Safari·Firefox까지 같은 품질로 지원하거나 음성 파일을 직접 관리하려면 별도 스트리밍 STT 제공자와 서버 WebSocket 경로가 필요합니다.
 
-PNG 견적서는 Windows의 기본 한글 글꼴과 Pillow를 이용해 서버에서 생성합니다.
+HWPX 견적서는 한글에서 열어 편집할 수 있도록 서버에서 생성합니다.
 
 ## 환경변수
 

@@ -25,17 +25,21 @@ test("잘못된 견적 입력과 공개 폴더 밖의 파일을 거부한다", a
 
 test("소개 페이지와 견적 작성 페이지를 분리한다", async () => {
   const [home, create] = await Promise.all([fetch(`${origin}/`), fetch(`${origin}/create`)]);
-  assert.match(await home.text(), /AI 견적서 작성/);
-  assert.match(await create.text(), /견적 요청 내용/);
+  const [homeHtml, createHtml] = await Promise.all([home.text(), create.text()]);
+  assert.match(homeHtml, /메인페이지/);
+  assert.match(homeHtml, /pretendard/i);
+  assert.match(createHtml, /견적서 만들기/);
+  assert.doesNotMatch(createHtml, /견적을 말하면/);
 });
 
-test("확정 견적서는 PNG로 내려준다", async () => {
+test("확정 견적서는 HWPX로 내려준다", async () => {
   const response = await fetch(`${origin}/api/quotes/export`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ clientName: "테스트상사", taxRate: 10, items: [{ name: "의자", quantity: 1, unitPrice: 1000 }] })
   });
-  const image = Buffer.from(await response.arrayBuffer());
-  assert.equal(response.headers.get("content-type"), "image/png");
-  assert.deepEqual([...image.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  const file = Buffer.from(await response.arrayBuffer());
+  assert.equal(response.headers.get("content-type"), "application/hwp+zip");
+  assert.equal(file.readUInt32LE(0), 0x04034b50);
+  assert.match(response.headers.get("content-disposition"), /\.hwpx/);
 });

@@ -4,7 +4,7 @@ import { extname, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { extractQuote } from "./src/openrouter.js";
 import { normalizeQuote, quoteTotals } from "./src/quote.js";
-import { createQuotePng } from "./src/png.js";
+import { createHwpx } from "./src/hwpx.js";
 
 const port = Number(process.env.PORT || 3000);
 const publicRoot = join(process.cwd(), "public");
@@ -47,10 +47,10 @@ export const server = http.createServer(async (request, response) => {
     }
     if (request.method === "POST" && pathname === "/api/quotes/export") {
       const quote = normalizeQuote(await jsonBody(request));
-      const file = await createQuotePng(quote);
+      const file = createHwpx(quote);
       response.writeHead(200, {
-        "Content-Type": "image/png",
-        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${quote.quoteNumber}-견적서.png`)}`,
+        "Content-Type": "application/hwp+zip",
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${quote.quoteNumber}-견적서.hwpx`)}`,
         "Content-Length": file.length
       });
       return response.end(file);

@@ -94,19 +94,19 @@ elements.form.addEventListener("submit", async event => {
   elements.exportError.textContent = "";
   const button = elements.form.querySelector('[type="submit"]');
   button.disabled = true;
-  button.textContent = "PNG 만드는 중…";
+  button.textContent = "HWPX 만드는 중…";
   try {
     const response = await fetch("/api/quotes/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(quoteData()) });
     if (!response.ok) throw new Error((await response.json()).error);
     const url = URL.createObjectURL(await response.blob());
-    const link = Object.assign(document.createElement("a"), { href: url, download: `${$("#quoteNumber").value}-견적서.png` });
+    const link = Object.assign(document.createElement("a"), { href: url, download: `${$("#quoteNumber").value}-견적서.hwpx` });
     link.click();
     URL.revokeObjectURL(url);
   } catch (error) {
     elements.exportError.textContent = error.message || "파일을 만들지 못했습니다.";
   } finally {
     button.disabled = false;
-    button.textContent = "확인 후 PNG 다운로드";
+    button.textContent = "확인 후 HWPX 다운로드";
   }
 });
 
