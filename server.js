@@ -71,7 +71,7 @@ export const server = http.createServer(async (request, response) => {
     const contentType = types[extname(filePath)];
     if (!contentType) return sendJson(response, 404, { error: "페이지를 찾을 수 없습니다." });
     const file = await readFile(filePath);
-    response.writeHead(200, { "Content-Type": contentType, "X-Content-Type-Options": "nosniff" });
+    response.writeHead(200, { "Content-Type": contentType, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
     response.end(file);
   } catch (error) {
     if (error.code === "ENOENT" || error.code === "EISDIR") return sendJson(response, 404, { error: "페이지를 찾을 수 없습니다." });

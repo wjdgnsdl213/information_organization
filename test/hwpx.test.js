@@ -16,6 +16,9 @@ function entries(data) {
   return files;
 }
 
+const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let i = 0; i < 8; i++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+function crc32(data) { let crc = 0xffffffff; for (const byte of data) crc = crcTable[(crc ^ byte) & 255] ^ (crc >>> 8); return (crc ^ 0xffffffff) >>> 0; }
+
 const quote = { quoteNumber: "Q-20260910-001", quoteDate: "2026-09-10", clientName: "테스트상사", taxRate: 10, notes: "납기 7일", supplier: { companyName: "견적상사", representative: "홍길동", registrationNumber: "123-45-67890", address: "서울" }, items: [{ name: "의자", spec: "기본형", quantity: 2, unit: "개", unitPrice: 100000 }] };
 
 test("HWPX has the quote template sections and table layout", () => {
@@ -30,6 +33,17 @@ test("HWPX has the quote template sections and table layout", () => {
   assert.match(section, /품목 내역/);
   assert.match(section, /공급가액 합계/);
   assert.match(section, /<hp:tbl/);
+});
+
+test("every HWPX entry has a valid ZIP checksum", () => {
+  const data = createHwpx(quote);
+  let offset = 0;
+  while (data.readUInt32LE(offset) === 0x04034b50) {
+    const size = data.readUInt32LE(offset + 22), nameLength = data.readUInt16LE(offset + 26), extraLength = data.readUInt16LE(offset + 28);
+    const start = offset + 30 + nameLength + extraLength;
+    assert.equal(data.readUInt32LE(offset + 14), crc32(data.subarray(start, start + size)));
+    offset = start + size;
+  }
 });
 
 test("HWPX escapes quote text", () => {
