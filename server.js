@@ -4,7 +4,7 @@ import { extname, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { extractQuote } from "./src/openrouter.js";
 import { normalizeQuote, quoteTotals } from "./src/quote.js";
-import { createHwpx } from "./src/hwpx.js";
+import { createQuotePng } from "./src/png.js";
 
 const port = Number(process.env.PORT || 3000);
 const publicRoot = join(process.cwd(), "public");
@@ -47,10 +47,10 @@ export const server = http.createServer(async (request, response) => {
     }
     if (request.method === "POST" && pathname === "/api/quotes/export") {
       const quote = normalizeQuote(await jsonBody(request));
-      const file = createHwpx(quote);
+      const file = await createQuotePng(quote);
       response.writeHead(200, {
-        "Content-Type": "application/hwp+zip",
-        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${quote.quoteNumber}-견적서.hwpx`)}`,
+        "Content-Type": "image/png",
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${quote.quoteNumber}-견적서.png`)}`,
         "Content-Length": file.length
       });
       return response.end(file);
@@ -62,7 +62,7 @@ export const server = http.createServer(async (request, response) => {
     if (request.method !== "GET") return sendJson(response, 404, { error: "요청한 기능을 찾을 수 없습니다." });
 
     const requested = decodeURIComponent(pathname);
-    const requestedPath = requested === "/" ? "index.html" : requested.slice(1);
+    const requestedPath = requested === "/" ? "landing.html" : requested === "/create" ? "index.html" : requested.slice(1);
     const filePath = resolve(publicRoot, requestedPath);
     const pathFromRoot = relative(publicRoot, filePath);
     if (pathFromRoot === ".." || pathFromRoot.startsWith(`..${String.fromCharCode(92)}`) || pathFromRoot.startsWith("../") || isAbsolute(pathFromRoot)) {

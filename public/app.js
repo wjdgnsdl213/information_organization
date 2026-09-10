@@ -10,7 +10,7 @@ let stopListening = () => {};
 
 function addItem(item = {}) {
   const row = elements.template.content.firstElementChild.cloneNode(true);
-  for (const input of row.querySelectorAll("input")) input.value = item[input.dataset.field] ?? (input.dataset.field === "unit" ? "개" : "");
+  for (const input of row.querySelectorAll("input")) input.value = item[input.dataset.field] || (input.dataset.field === "unit" ? "개" : "");
   row.querySelector(".remove-item").addEventListener("click", () => { row.remove(); calculate(); });
   row.addEventListener("input", calculate);
   elements.rows.append(row);
@@ -59,7 +59,9 @@ function showDraft(draft) {
   elements.missing.hidden = !missing.length;
   elements.missing.textContent = missing.length ? `확인이 필요합니다: ${missing.join(", ")}` : "";
   elements.empty.hidden = true;
+  elements.empty.classList.add("is-hidden");
   elements.form.hidden = false;
+  elements.form.classList.add("is-visible");
   calculate();
   elements.form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -92,19 +94,19 @@ elements.form.addEventListener("submit", async event => {
   elements.exportError.textContent = "";
   const button = elements.form.querySelector('[type="submit"]');
   button.disabled = true;
-  button.textContent = "HWPX 만드는 중…";
+  button.textContent = "PNG 만드는 중…";
   try {
     const response = await fetch("/api/quotes/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(quoteData()) });
     if (!response.ok) throw new Error((await response.json()).error);
     const url = URL.createObjectURL(await response.blob());
-    const link = Object.assign(document.createElement("a"), { href: url, download: `${$("#quoteNumber").value}-견적서.hwpx` });
+    const link = Object.assign(document.createElement("a"), { href: url, download: `${$("#quoteNumber").value}-견적서.png` });
     link.click();
     URL.revokeObjectURL(url);
   } catch (error) {
     elements.exportError.textContent = error.message || "파일을 만들지 못했습니다.";
   } finally {
     button.disabled = false;
-    button.textContent = "검토 완료 · HWPX 다운로드";
+    button.textContent = "확인 후 PNG 다운로드";
   }
 });
 
