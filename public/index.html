@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <title>견적서 작성기</title>
+  <meta name="description" content="말하거나 입력하면 검토 가능한 HWPX 견적서를 만듭니다.">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="견적서 작성기 홈"><span class="brand-mark" aria-hidden="true">□</span><span>견적서</span></a>
+    <span class="privacy">음성은 브라우저 음성 인식 서비스에서 처리됩니다</span>
+  </header>
+  <main>
+    <section class="intro" aria-labelledby="pageTitle">
+      <p class="eyebrow">ai 견적 도우미</p>
+      <h1 id="pageTitle">견적을 말하면,<br>문서가 됩니다.</h1>
+      <p>거래처, 품목, 수량과 단가를 알려주세요. AI가 견적 초안을 정리합니다.</p>
+    </section>
+    <section class="workspace" aria-label="견적서 작성">
+      <div class="input-panel panel">
+        <div class="panel-heading"><div><p class="step">입력</p><h2>요청 내용을 입력하세요</h2><p id="speechSupport">직접 적거나 마이크 버튼을 눌러 말해보세요.</p></div>
+          <button id="micButton" class="mic-button" type="button" aria-pressed="false"><span class="mic-icon" aria-hidden="true">●</span><span id="micLabel">음성 입력</span></button>
+        </div>
+        <label class="sr-only" for="requestInput">견적 요청 내용</label>
+        <textarea id="requestInput" rows="11" placeholder="예: 한빛상사에 보낼 사무용 의자 10개 견적서를 만들어줘. 개당 12만 원, 배송비는 5만 원이고 부가세는 별도야."></textarea>
+        <div class="live-row" id="liveRow" role="status" aria-live="polite" aria-atomic="true" hidden><span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>듣고 있습니다. 말한 내용이 실시간으로 입력됩니다.</span></div>
+        <button id="parseButton" class="primary-button" type="button">AI로 견적 초안 만들기</button>
+        <p id="inputError" class="message error" role="alert"></p>
+        <details class="supplier-settings"><summary>내 회사 정보 설정</summary><div class="field-grid"><label>상호<input id="supplierCompany" autocomplete="organization"></label><label>대표자<input id="supplierRepresentative" autocomplete="name"></label><label>사업자번호<input id="supplierRegistration" inputmode="numeric"></label><label class="wide">주소<input id="supplierAddress" autocomplete="street-address"></label></div></details>
+      </div>
+      <div class="quote-panel panel" id="quotePanel">
+        <div class="empty-state" id="emptyState"><span class="empty-sheet" aria-hidden="true">▤</span><h2>견적서를 준비하고 있어요</h2><p>왼쪽에 요청 내용을 입력하면 검토할 초안이 이곳에 나타납니다.</p></div>
+        <form id="quoteForm" class="quote-sheet" hidden>
+          <div class="quote-head"><div><p class="step">검토</p><h2>견적서</h2></div><label>견적번호<input id="quoteNumber" required></label></div>
+          <div id="missingFields" class="message warning" role="status" hidden></div>
+          <div class="field-grid quote-fields"><label>받는 분<input id="clientName" required></label><label>담당자 · 연락처<input id="clientContact"></label><label>견적일<input id="quoteDate" type="date" required></label><label>유효기간<input id="validUntil" type="date"></label></div>
+          <div class="table-wrap"><table><thead><tr><th>품목</th><th>규격</th><th>수량</th><th>단위</th><th>단가</th><th>금액</th><th><span class="sr-only">행 제거</span></th></tr></thead><tbody id="itemRows"></tbody></table></div>
+          <button id="addItem" class="text-button" type="button">+ 품목 추가</button>
+          <div class="quote-bottom"><label class="notes">비고<textarea id="notes" rows="3"></textarea></label><div class="totals"><label>부가세율 <input id="taxRate" type="number" min="0" max="100" step="0.1">%</label><p><span>공급가액</span><strong id="supplyTotal">0원</strong></p><p><span>부가세</span><strong id="taxTotal">0원</strong></p><p class="grand-total"><span>합계</span><strong id="grandTotal">0원</strong></p></div></div>
+          <p id="exportError" class="message error" role="alert"></p><button class="download-button" type="submit">확인 후 HWPX 다운로드</button>
+        </form>
+      </div>
+    </section>
+  </main>
+  <template id="itemTemplate"><tr><td><input data-field="name" aria-label="품목명" required></td><td><input data-field="spec" aria-label="규격"></td><td><input data-field="quantity" aria-label="수량" type="number" min="0.01" step="any" required></td><td><input data-field="unit" aria-label="단위" required></td><td><input data-field="unitPrice" aria-label="단가" type="number" min="0" step="1" required></td><td class="line-total">0원</td><td><button class="remove-item" type="button" aria-label="품목 행 제거">×</button></td></tr></template>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
