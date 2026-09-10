@@ -6,6 +6,12 @@
 
 Node.js 22 이상이 필요합니다. 외부 패키지는 없습니다.
 
+PNG 생성에는 Python 3와 Pillow가 필요합니다.
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
 1. `.env.example`을 `.env`로 복사합니다.
 2. `OPENROUTER_API_KEY`에 OpenRouter 키를 넣습니다.
 3. 아래 명령을 실행하고 `http://localhost:3000`을 엽니다.
